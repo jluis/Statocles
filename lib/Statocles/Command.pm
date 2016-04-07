@@ -170,7 +170,12 @@ sub main {
         }
 
         # Using start() instead of run() so we can stop() inside the tests
-        $daemon->start;
+        eval {$daemon->start};
+        if ($@) {
+           my $port = $opt{port} ||$ENV{MOJO_LISTEN} || 3000;
+           $@ =~ s/socket:/socket on port $port:/;
+           die $@;
+        }
 
         # Find the port we're listening on
         my $id = $daemon->acceptors->[0];
