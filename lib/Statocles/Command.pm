@@ -170,11 +170,20 @@ sub main {
         }
 
         # Using start() instead of run() so we can stop() inside the tests
-        eval {$daemon->start};
-        if ($@) {
-           my $port = $opt{port} ||$ENV{MOJO_LISTEN} || 3000;
-           $@ =~ s/socket:/socket on port $port:/;
-           die $@;
+        # and eval to do a partial rewrite of some error messages
+        {
+            use POSIX qw(setlocale locale_h);
+            my $locale = setlocale(LC_MESSAGES);
+            setlocale(LC_MESSAGES,'C');
+            eval {$daemon->start};
+            setlocale(LC_MESSAGES,$locale);
+        };
+        if ($@ ) {
+            if ($@ =~ /^Can't create listen socket: Address already in use/) {
+                my $port = join ' or ',@{$daemon->listen()};
+                $@ =~  s/socket:/socket for ($port):/;
+            }
+            die $@;
         }
 
         # Find the port we're listening on
